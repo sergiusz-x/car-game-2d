@@ -233,9 +233,9 @@ def generate_track(number_of_mid_points=1):
     #
 
 # Generowanie nowego toru co x sekundy
-czestotliwosc_generowania = 1 # sekundy
+czestotliwosc_generowania = 10 # sekundy
 last_generowanie = 0
-ilosc_mid_pointow = 3
+ilosc_mid_pointow = 6
 
 # Wywołanie funkcji
 generate_track(ilosc_mid_pointow)
@@ -258,9 +258,9 @@ while True:
     if gra_uruchomiona:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and car_speed > 0:
-            car_angle += 5
+            car_angle += 3
         if keys[pygame.K_RIGHT] and car_speed > 0:
-            car_angle -= 5
+            car_angle -= 3
         if keys[pygame.K_UP]:
             # Przyspieszenie auta
             car_speed = min(car_speed + car_acceleration, car_max_speed)
