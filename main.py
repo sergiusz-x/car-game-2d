@@ -20,20 +20,37 @@ car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), "car.png")
 car_rect = car_image.get_rect()
 car_rect.center = (width // 2, height // 2)
 
+# Wczytanie obrazu flagi mety
+flags_dimensions = (60, 60)
+flag_end_img = pygame.image.load(os.path.join(os.path.dirname(__file__), "flag_end.png"))
+flag_end_img = pygame.transform.scale(flag_end_img, flags_dimensions)
+flag_end = flag_end_img.get_rect()
+flag_end.center = (width // 2, height // 2)
+
+
 # Ustawienia auta
 car_speed = 0  # Początkowa prędkość
 car_max_speed = 5  # Maksymalna prędkość
 car_acceleration = 0.1  # Współczynnik przyspieszenia
 car_angle = 90
+car_turn_factor = 3
 
 # Ustawienia wyglądu
 track_color = (0, 0, 0)
 track_width = 75
-map_color = (255, 255, 255)
+track_radius_round = 30
+map_color = (255, 250, 245)
 map_margin = 75
+
+# Ustawienia gry
+max_count_tracks = 10 # Ilość torów do przejścia
+count_track = 0
+ilosc_mid_pointow = 3
+max_ilosc_mid_pointow = 7
 
 # Flaga, czy gra jest uruchomiona
 gra_uruchomiona = True
+gra_ukonczona = False
 
 # Główna pętla gry
 clock = pygame.time.Clock()
@@ -46,14 +63,116 @@ current_track = {
     "mid_points": [],
     "end_point_x": width - map_margin,
     "end_point_y": 0,
+    "start_line": (0, 0, 0, 0),
+    "end_line": (0, 0, 0, 0),
     "points": [],
     "test_points": [],
-    "lines": []
+    "test_lines": [],
+    "lines": [],
+    "lines_round": []
 }
+# Klasa do obsługi licznika czasu
+class Timer:
+    def __init__(self):
+        self.start_time = 0
+        self.running = False
+        self.freezed = False
+        self.freezed_time = 0
 
+    def start(self):
+        self.start_time = pygame.time.get_ticks()
+        self.running = True
+
+    def stop(self):
+        self.running = False
+    
+    def freeze(self):
+        self.freezed = True
+        self.freezed_time = pygame.time.get_ticks()
+
+    def restart(self):
+        self.start_time = pygame.time.get_ticks()
+
+    def get_elapsed_time(self):
+        if self.freezed:
+            return self.freezed_time - self.start_time
+        elif self.running:
+            return pygame.time.get_ticks() - self.start_time
+        else:
+            return 0
+# Tworzenie liczników czasu
+timer_main = Timer()
+timer_track = Timer()
+# Funkcja konwertująca tekst w milisekundach na tekst czytelny
+def convert_timers_to_text(timer):
+    elapsed_time = timer.get_elapsed_time()
+    elapsed_seconds = elapsed_time // 1000
+    elapsed_milliseconds = elapsed_time % 1000
+    return f"{elapsed_seconds}.{round(elapsed_milliseconds/100)}s"
 # Funkcja obliczająca odległość między punktami
 def calculate_distance(point1, point2):
     return math.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
+# Funkcja obliczająca środek między dwoma punktami
+def middle_between_points(punkt1, punkt2):
+    srodek_x = (punkt1[0] + punkt2[0]) / 2
+    srodek_y = (punkt1[1] + punkt2[1]) / 2
+    return (int(srodek_x), int(srodek_y))
+# Funkcja sprawdzająca czy dwie linie się przecinają
+def czy_linie_sie_przecinaja(linia1, linia2):
+    x1, y1, x2, y2 = linia1
+    x3, y3, x4, y4 = linia2
+
+    def orientation(p, q, r):
+        val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
+        if val == 0:
+            return 0  # Linie są współliniowe
+        return 1 if val > 0 else 2  # 1 - zgodnie z ruchem wskazówek zegara, 2 - przeciwnie do ruchu wskazówek zegara
+
+    def on_segment(p, q, r):
+        return (q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and
+                q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1]))
+
+    o1 = orientation((x1, y1), (x2, y2), (x3, y3))
+    o2 = orientation((x1, y1), (x2, y2), (x4, y4))
+    o3 = orientation((x3, y3), (x4, y4), (x1, y1))
+    o4 = orientation((x3, y3), (x4, y4), (x2, y2))
+
+    # Sprawdzenie ogólnego przypadku
+    if o1 != o2 and o3 != o4:
+        return True
+
+    # Sprawdzenie szczególnego przypadku, gdy linie leżą na jednej prostej
+    if o1 == 0 and on_segment((x1, y1), (x3, y3), (x2, y2)):
+        return True
+    if o2 == 0 and on_segment((x1, y1), (x4, y4), (x2, y2)):
+        return True
+    if o3 == 0 and on_segment((x3, y3), (x1, y1), (x4, y4)):
+        return True
+    if o4 == 0 and on_segment((x3, y3), (x2, y2), (x4, y4)):
+        return True
+
+    return False
+# Funkcja obliczająca punkty przecięcia
+def znajdz_punkt_przeciecia(linia1, linia2):
+    x1, y1, x2, y2 = linia1
+    x3, y3, x4, y4 = linia2
+
+    # Obliczanie współczynnika nachylenia i przesunięcia dla obu linii
+    a1 = (y2 - y1) / (x2 - x1) if x2 - x1 != 0 else float('inf')
+    b1 = y1 - a1 * x1
+
+    a2 = (y4 - y3) / (x4 - x3) if x4 - x3 != 0 else float('inf')
+    b2 = y3 - a2 * x3
+
+    # Sprawdzenie, czy linie są równoległe
+    if a1 == a2:
+        return None  # Linie są równoległe, brak punktu przecięcia
+
+    # Obliczanie współrzędnych punktu przecięcia
+    x = (b2 - b1) / (a1 - a2)
+    y = a1 * x + b1
+
+    return x, y
 # Funkcja do rysowania półkola
 def draw_semicircle(surface, center, point1, point2, color):
     radius = calculate_distance(center, point1)
@@ -67,17 +186,51 @@ def draw_semicircle(surface, center, point1, point2, color):
 
     # Rysowanie półkola
     pygame.draw.arc(surface, color, (center[0] - radius, center[1] - radius, 2 * radius+2, 2 * radius+2), angle1/57, angle2/57, 2)
+# Funkcja rysująca zaokrąglone linie toru
+def draw_rounded_line(surface, color, start, end, radius):
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    dist = math.hypot(dx, dy)
+
+    if dist == 0:
+        return  # Unikaj dzielenia przez zero
+
+    dx /= dist
+    dy /= dist
+
+    rounded_start = (int(start[0] + radius * dx), int(start[1] + radius * dy))
+    rounded_end = (int(end[0] - radius * dx), int(end[1] - radius * dy))
+
+    pygame.draw.line(surface, color, rounded_start, rounded_end, 5)
+# Funkcja tworząca tekst
+default_font_size = 36
+default_text_color = (20, 20, 20)
+def draw_text(screen, text, x, y, font_size=default_font_size, text_color=default_text_color):
+    font = pygame.font.Font(None, font_size)
+    text_surface = font.render(text, True, text_color)
+    text_rect = text_surface.get_rect()
+    text_rect.center = (x, y)
+    screen.blit(text_surface, text_rect)
 # Funkcja od generowania toru
 def generate_track(number_of_mid_points=1):
-    global current_track, track_width
+    global current_track, track_width, track_radius_round
     global width, height, map_margin
     global car_rect, car_angle, car_speed
+    global count_track
 
     # Resetowanie ustawień
     current_track["test_points"] = []
+    current_track["test_lines"] = []
     current_track["mid_points"] = []
     current_track["lines"] = []
+    current_track["lines_round"] = []
     current_track["points"] = []
+    current_track["start_line"] = (0, 0, 0, 0)
+    current_track["end_line"] = (0, 0, 0, 0)
+    if timer_track.running:
+        timer_track.restart()
+    else:
+        timer_track.start()
+    count_track += 1
 
     # Losowanie punktu startu i mety
     current_track["start_point_y"] = random.randint(int(height/2-map_margin*2), int(height/2+map_margin*2))
@@ -95,48 +248,6 @@ def generate_track(number_of_mid_points=1):
         mid_points.append((x, y))
     #
     mid_points.append((current_track["end_point_x"], current_track["end_point_y"])) # End
-
-    # Funkcja obliczająca środek między dwoma punktami
-    def middle_between_points(punkt1, punkt2):
-        srodek_x = (punkt1[0] + punkt2[0]) / 2
-        srodek_y = (punkt1[1] + punkt2[1]) / 2
-        return (int(srodek_x), int(srodek_y))
-    # Funkcja sprawdzająca czy dwie linie się przecinają
-    def czy_linie_sie_przecinaja(linia1, linia2):
-        x1, y1, x2, y2 = linia1
-        x3, y3, x4, y4 = linia2
-
-        # Sprawdzenie warunku przecięcia linii
-        if (
-            (min(x1, x2) <= x3 <= max(x1, x2) and min(y1, y2) <= y3 <= max(y1, y2)) or
-            (min(x1, x2) <= x4 <= max(x1, x2) and min(y1, y2) <= y4 <= max(y1, y2)) or
-            (min(x3, x4) <= x1 <= max(x3, x4) and min(y3, y4) <= y1 <= max(y3, y4)) or
-            (min(x3, x4) <= x2 <= max(x3, x4) and min(y3, y4) <= y2 <= max(y3, y4))
-        ):
-            return True
-        else:
-            return False
-    # Funkcja obliczająca punkty przecięcia
-    def znajdz_punkt_przeciecia(linia1, linia2):
-        x1, y1, x2, y2 = linia1
-        x3, y3, x4, y4 = linia2
-
-        # Obliczanie współczynnika nachylenia i przesunięcia dla obu linii
-        a1 = (y2 - y1) / (x2 - x1) if x2 - x1 != 0 else float('inf')
-        b1 = y1 - a1 * x1
-
-        a2 = (y4 - y3) / (x4 - x3) if x4 - x3 != 0 else float('inf')
-        b2 = y3 - a2 * x3
-
-        # Sprawdzenie, czy linie są równoległe
-        if a1 == a2:
-            return None  # Linie są równoległe, brak punktu przecięcia
-
-        # Obliczanie współrzędnych punktu przecięcia
-        x = (b2 - b1) / (a1 - a2)
-        y = a1 * x + b1
-
-        return x, y
 
     # Wartość kroku (długość linii)
     step = 10
@@ -225,24 +336,66 @@ def generate_track(number_of_mid_points=1):
         if calculate_distance(punkt1, punkt2) < track_width*2-10:
             return generate_track(number_of_mid_points)
 
-    # Ustawianie autka na pozycji startu
+    # Zaokrąglenie toru
+    for i in range(len(current_track["lines"])):
+        start = (current_track["lines"][i][0], current_track["lines"][i][1])
+        end = (current_track["lines"][i][2], current_track["lines"][i][3])
+
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        dist = math.hypot(dx, dy)
+
+        if dist == 0:
+            return
+
+        dx /= dist
+        dy /= dist
+
+        rounded_start = (int(start[0] + track_radius_round * dx), int(start[1] + track_radius_round * dy))
+        rounded_end = (int(end[0] - track_radius_round * dx), int(end[1] - track_radius_round * dy))
+
+        # Jeśli 2 pierwsze lub 2 ostatnie linie to ich nie zmniejszać
+        if i < 2: # 2 pierwsze linie
+            rounded_start = (int(start[0]), int(start[1]))
+        if i >= len(current_track["lines"])-2: # 2 ostatnie linie
+            rounded_end = (int(end[0]), int(end[1]))
+
+        current_track["lines_round"].append(rounded_start + rounded_end)
+
+    # Ustawianie lini startu i mety
+    current_track["start_line"] = (
+        current_track["lines"][0][0]-5,
+        current_track["lines"][0][1],
+        current_track["lines"][1][0]-5,
+        current_track["lines"][1][1]
+    )
+    current_track["end_line"] = (
+        current_track["lines"][-1][2],
+        current_track["lines"][-1][3],
+        current_track["lines"][-2][2],
+        current_track["lines"][-2][3]
+    )
+
+    # Ustawianie auta na pozycji startu
     car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
-    car_point = (current_track["start_point_x"], current_track["start_point_y"])
-    car_rect.center = car_point
+    car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
     car_speed = 0
+    
+    # Ustawienie flag
+    flag_end.center = (current_track["end_point_x"], current_track["end_point_y"])
     #
 
 # Generowanie nowego toru co x sekundy
 czestotliwosc_generowania = 10 # sekundy
 last_generowanie = 0
-ilosc_mid_pointow = 6
 
 # Wywołanie funkcji
 generate_track(ilosc_mid_pointow)
 
-
 # Główna pętla gry
 while True:
+    # Wypełnienie ekranu kolorem tła
+    screen.fill(map_color)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -258,15 +411,52 @@ while True:
     if gra_uruchomiona:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and car_speed > 0:
-            car_angle += 3
+            car_angle += car_turn_factor
         if keys[pygame.K_RIGHT] and car_speed > 0:
-            car_angle -= 3
+            car_angle -= car_turn_factor
         if keys[pygame.K_UP]:
             # Przyspieszenie auta
             car_speed = min(car_speed + car_acceleration, car_max_speed)
         else:
             # Hamowanie auta
             car_speed = max(0, car_speed - car_acceleration)
+
+        # Uruchomienie timera
+        if not timer_main.running:
+            timer_main.start()
+
+        # Sprawdzenie czy auto przekroczyło linie toru lub mety
+        for line in [current_track["start_line"]] + current_track["lines"]:
+            #
+            #
+            car_center = (int(car_rect.x+car_rect.width/2), int(car_rect.y+car_rect.height/2))
+            car_direction_point = (
+                int(car_center[0] + car_rect.width/2*math.cos(math.radians(car_angle))),
+                int(car_center[1] - car_rect.width/2*math.sin(math.radians(car_angle)))
+            )
+            if czy_linie_sie_przecinaja(line, car_center+car_direction_point):
+                car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
+                car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
+                car_speed = 0
+            # META
+            if czy_linie_sie_przecinaja(current_track["end_line"], car_center+car_direction_point):
+                car_speed = 0
+                
+                if count_track < max_count_tracks:
+                    poprzednia_ilosc_pointow = ilosc_mid_pointow
+                    ilosc_mid_pointow = math.ceil((count_track/max_count_tracks) * max_ilosc_mid_pointow)
+                    if ilosc_mid_pointow < poprzednia_ilosc_pointow:
+                        ilosc_mid_pointow = poprzednia_ilosc_pointow
+                    #
+                    print(f"NOWY TOR: {ilosc_mid_pointow}")
+                    generate_track(ilosc_mid_pointow)
+                    car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
+                    car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
+                else:
+                    gra_uruchomiona = False
+                    gra_ukonczona = True
+                    timer_main.freeze()
+            #        
 
         # Obliczenia nowej pozycji auta
         car_rect.x += car_speed * pygame.math.Vector2(1, 0).rotate(-car_angle).x
@@ -281,37 +471,60 @@ while True:
             car_rect.top = 0
         if car_rect.bottom > height:
             car_rect.bottom = height
+        
+        # Wyświetlanie timerów
+        draw_text(screen, f"Czas łączny: {convert_timers_to_text(timer_main)}", width/2, 15, 35)
+        draw_text(screen, f"Czas toru: {convert_timers_to_text(timer_track)}", width/2, 35, 25)
 
-    # Wypełnienie ekranu kolorem tła
-    screen.fill(map_color)
 
-    # Rysowanie punktów
-    for point in current_track["points"]:
-        pygame.draw.circle(screen, track_color, (int(point[0]), int(point[1])), 2)
+        # Rysowanie punktów
+        # for point in current_track["points"]:
+            # pygame.draw.circle(screen, track_color, (int(point[0]), int(point[1])), 2)
+        
+        # Rysowanie linii toru
+        for line in current_track["lines"]:
+            pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 3)
+        
+        # Rysowanie zaokrągleń toru
+        for i in range(0, len(current_track["lines_round"])-2, 2):
+            punkt1 = (current_track["lines_round"][i][2], current_track["lines_round"][i][3])
+            punkt2 = (current_track["lines_round"][i+2][0], current_track["lines_round"][i+2][1])
+            srodek = middle_between_points(punkt1, punkt2)
+            # draw_semicircle(screen, srodek, punkt1, punkt2, (255, 0, 0))
+            # current_track["test_points"].append(punkt1)
+            # current_track["test_points"].append(punkt2)
+            # current_track["test_points"].append(srodek)
+
+        # Rysowanie zamknięcia toru
+        draw_semicircle(screen, current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]), (current_track["lines"][1][0], current_track["lines"][1][1]), track_color)
+        draw_semicircle(screen, current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]), (current_track["lines"][-2][2], current_track["lines"][-2][3]), track_color)
+
+        # Rysowanie punktów i linii testowych
+        for point in current_track["test_points"]:
+            pygame.draw.circle(screen, (255, 0, 0), (int(point[0]), int(point[1])), 5)
+        for line in current_track["test_lines"]:
+            pygame.draw.line(screen, (0, 0, 255), (line[0], line[1]), (line[2], line[3]), 5)
+
+        # Rysowanie flag
+        screen.blit(flag_end_img, flag_end.topleft)
+
+        # Rysowanie auta
+        rotated_car = pygame.transform.rotate(car_image, car_angle)
+        rotated_rect = rotated_car.get_rect(center=car_rect.center)
+        screen.blit(rotated_car, rotated_rect.topleft)
+
+        # Generowanie nowego toru co x sekundy
+        aktualna_sekunda = int(pygame.time.get_ticks() / 1000)
+        if False and aktualna_sekunda % czestotliwosc_generowania == 0 and aktualna_sekunda != last_generowanie:
+            generate_track(ilosc_mid_pointow)
+            last_generowanie = aktualna_sekunda
+
+        draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 50, 20)
+
+    # Wyświetlanie ekranu końcowego
+    if gra_ukonczona:
+        draw_text(screen, f"Gratulacje! Ukończyłeś wszystkie tory w {convert_timers_to_text(timer_main)}", width/2, height/2, 40)
     
-    # Rysowanie punktów testowych
-    for point in current_track["test_points"]:
-        pygame.draw.circle(screen, (255, 0, 0), (int(point[0]), int(point[1])), 5)
-    
-    # Rysowanie linii
-    for line in current_track["lines"]:
-        pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 3)
-
-    # Rysowanie zamknięcia toru
-    draw_semicircle(screen, current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]), (current_track["lines"][1][0], current_track["lines"][1][1]), track_color)
-    draw_semicircle(screen, current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]), (current_track["lines"][-2][2], current_track["lines"][-2][3]), track_color)
-
-    # Rysowanie auta
-    rotated_car = pygame.transform.rotate(car_image, car_angle)
-    rotated_rect = rotated_car.get_rect(center=car_rect.center)
-    screen.blit(rotated_car, rotated_rect.topleft)
-
-    # Generowanie nowego toru co x sekundy
-    aktualna_sekunda = int(pygame.time.get_ticks() / 1000)
-    if aktualna_sekunda % czestotliwosc_generowania == 0 and aktualna_sekunda != last_generowanie:
-        generate_track(ilosc_mid_pointow)
-        last_generowanie = aktualna_sekunda
-
     # Aktualizacja ekranu
     pygame.display.flip()
 
