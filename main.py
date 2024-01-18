@@ -6,7 +6,8 @@ import math
 import numpy
 
 # Ustawienie seed dla random do testów
-random.seed(9999421)
+game_seed = 12345
+random.seed(game_seed)
 
 # Inicjalizacja Pygame
 pygame.init()
@@ -45,13 +46,13 @@ map_color = (255, 250, 245)
 map_margin = 75
 
 # Ustawienia gry
-max_count_tracks = 3 # Ilość torów do przejścia
+max_count_tracks = 2 # Ilość torów do przejścia
 count_track = 0
-ilosc_mid_pointow = 3
+ilosc_mid_pointow = 1
 max_ilosc_mid_pointow = 7
 
 # Flaga, czy gra jest uruchomiona
-gra_uruchomiona = True
+gra_uruchomiona = False
 gra_ukonczona = False
 
 # Główna pętla gry
@@ -86,9 +87,12 @@ class Timer:
     def start(self):
         self.start_time = pygame.time.get_ticks()
         self.running = True
+        print("START")
 
     def stop(self):
+        self.start_time = 0
         self.running = False
+        print("STOP")
     
     def freeze(self):
         self.freezed = True
@@ -96,6 +100,7 @@ class Timer:
 
     def restart(self):
         self.start_time = pygame.time.get_ticks()
+        print("RESTART")
 
     def get_elapsed_time(self):
         if self.freezed:
@@ -438,12 +443,9 @@ def generate_track(number_of_mid_points=1):
     flag_end.center = (current_track["end_point_x"], current_track["end_point_y"])
     #
 
-# Generowanie nowego toru co x sekundy
-czestotliwosc_generowania = 10 # sekundy
-last_generowanie = 0
-
 # Wywołanie funkcji
 generate_track(ilosc_mid_pointow)
+
 
 # Główna pętla gry
 while True:
@@ -460,6 +462,19 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 sys.exit()
+            if event.key == pygame.K_SPACE:
+                timer_track.restart()
+                gra_uruchomiona = True
+            if event.key == pygame.K_r: # Restart gry
+                random.seed(game_seed)
+                generate_track(ilosc_mid_pointow)
+                count_track = 1
+                gra_uruchomiona = False
+                gra_ukonczona = False
+                timer_main = Timer()
+
+                
+
 
     # Ruch auta tylko jeśli gra jest uruchomiona
     if gra_uruchomiona:
@@ -502,7 +517,6 @@ while True:
                     if ilosc_mid_pointow < poprzednia_ilosc_pointow:
                         ilosc_mid_pointow = poprzednia_ilosc_pointow
                     #
-                    print(f"NOWY TOR: {ilosc_mid_pointow}")
                     generate_track(ilosc_mid_pointow)
                     car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
                     car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
@@ -585,16 +599,23 @@ while True:
         screen.blit(rotated_car, rotated_rect.topleft)
 
         # Generowanie nowego toru co x sekundy
-        aktualna_sekunda = int(pygame.time.get_ticks() / 1000)
-        if False and aktualna_sekunda % czestotliwosc_generowania == 0 and aktualna_sekunda != last_generowanie:
-            generate_track(ilosc_mid_pointow)
-            last_generowanie = aktualna_sekunda
+        # czestotliwosc_generowania = 10 # sekundy
+        # last_generowanie = 0
+        # aktualna_sekunda = int(pygame.time.get_ticks() / 1000)
+        # if aktualna_sekunda % czestotliwosc_generowania == 0 and aktualna_sekunda != last_generowanie:
+        #     generate_track(ilosc_mid_pointow)
+        #     last_generowanie = aktualna_sekunda
 
         draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 60, 20)
+
+    # Start gry i odliczanie
+    if not gra_uruchomiona and not gra_ukonczona:
+        draw_text(screen, "Kliknij SPACE aby rozpocząć grę!", width/2, height/2, 55)
 
     # Wyświetlanie ekranu końcowego
     if gra_ukonczona:
         draw_text(screen, f"Gratulacje! Ukończyłeś wszystkie tory w {convert_timers_to_text(timer_main)}", width/2, height/2, 40)
+        draw_text(screen, f"Kliknij R aby zrestartować grę", width/2, height/2+40, 20)
     
     # Aktualizacja ekranu
     pygame.display.flip()
