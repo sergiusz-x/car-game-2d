@@ -3,9 +3,10 @@ import sys
 import os
 import random
 import math
+import numpy
 
 # Ustawienie seed dla random do testów
-# random.seed(9999421)
+random.seed(9999421)
 
 # Inicjalizacja Pygame
 pygame.init()
@@ -37,13 +38,14 @@ car_turn_factor = 3
 
 # Ustawienia wyglądu
 track_color = (0, 0, 0)
+track_inside_color = (66, 66, 66)
 track_width = 75
 track_radius_round = 30
 map_color = (255, 250, 245)
 map_margin = 75
 
 # Ustawienia gry
-max_count_tracks = 10 # Ilość torów do przejścia
+max_count_tracks = 3 # Ilość torów do przejścia
 count_track = 0
 ilosc_mid_pointow = 3
 max_ilosc_mid_pointow = 7
@@ -66,10 +68,12 @@ current_track = {
     "start_line": (0, 0, 0, 0),
     "end_line": (0, 0, 0, 0),
     "points": [],
+    "middle_line_points": [],
     "test_points": [],
     "test_lines": [],
     "lines": [],
-    "lines_round": []
+    "lines_round": [],
+    "track_points": []
 }
 # Klasa do obsługi licznika czasu
 class Timer:
@@ -185,7 +189,7 @@ def draw_semicircle(surface, center, point1, point2, color):
     angle1, angle2 = angle2, angle1
 
     # Rysowanie półkola
-    pygame.draw.arc(surface, color, (center[0] - radius, center[1] - radius, 2 * radius+2, 2 * radius+2), angle1/57, angle2/57, 2)
+    pygame.draw.arc(surface, color, (center[0] - radius, center[1] - radius, 2 * radius+2, 2 * radius+2), angle1/57, angle2/57, 5)
 # Funkcja rysująca zaokrąglone linie toru
 def draw_rounded_line(surface, color, start, end, radius):
     dx, dy = end[0] - start[0], end[1] - start[1]
@@ -201,6 +205,34 @@ def draw_rounded_line(surface, color, start, end, radius):
     rounded_end = (int(end[0] - radius * dx), int(end[1] - radius * dy))
 
     pygame.draw.line(surface, color, rounded_start, rounded_end, 5)
+# Funkcja rysująca przerywaną linię
+def draw_dashed_line(surface, color, start_pos, end_pos, width=1, dash_length=10):
+    x1, y1 = start_pos
+    x2, y2 = end_pos
+    dl = dash_length
+
+    if (x1 == x2):
+        ycoords = [y for y in range(y1, y2, dl if y1 < y2 else -dl)]
+        xcoords = [x1] * len(ycoords)
+    elif (y1 == y2):
+        xcoords = [x for x in range(x1, x2, dl if x1 < x2 else -dl)]
+        ycoords = [y1] * len(xcoords)
+    else:
+        a = abs(x2 - x1)
+        b = abs(y2 - y1)
+        c = round(math.sqrt(a**2 + b**2))
+        dx = dl * a / c
+        dy = dl * b / c
+
+        xcoords = [x for x in numpy.arange(x1, x2, dx if x1 < x2 else -dx)]
+        ycoords = [y for y in numpy.arange(y1, y2, dy if y1 < y2 else -dy)]
+
+    next_coords = list(zip(xcoords[1::2], ycoords[1::2]))
+    last_coords = list(zip(xcoords[0::2], ycoords[0::2]))
+    for (x1, y1), (x2, y2) in zip(next_coords, last_coords):
+        start = (round(x1), round(y1))
+        end = (round(x2), round(y2))
+        pygame.draw.line(surface, color, start, end, width)
 # Funkcja tworząca tekst
 default_font_size = 36
 default_text_color = (20, 20, 20)
@@ -219,7 +251,9 @@ def generate_track(number_of_mid_points=1):
 
     # Resetowanie ustawień
     current_track["test_points"] = []
+    current_track["track_points"] = []
     current_track["test_lines"] = []
+    current_track["middle_line_points"] = []
     current_track["mid_points"] = []
     current_track["lines"] = []
     current_track["lines_round"] = []
@@ -374,6 +408,26 @@ def generate_track(number_of_mid_points=1):
         current_track["lines"][-2][2],
         current_track["lines"][-2][3]
     )
+    
+    # Tworzenie punktów toru
+    for line in current_track["lines"]:
+        current_track["track_points"].append((line[0], line[1]))
+        current_track["track_points"].append((line[2], line[3]))
+
+    # Tworzenie punktów do środkowej lini przerywanej
+    for i in range(0, len(current_track["lines"])-1, 2):
+        middle_point = middle_between_points(
+            (current_track["lines"][i][0], current_track["lines"][i][1]),
+            (current_track["lines"][i+1][0], current_track["lines"][i+1][1])
+        )
+        current_track["middle_line_points"].append(middle_point)
+        if i == len(current_track["lines"])-2: # Jeśli ostatni punkt to dodatkowo dla lini mety
+            middle_point = middle_between_points(
+                (current_track["lines"][i][2], current_track["lines"][i][3]),
+                (current_track["lines"][i+1][2], current_track["lines"][i+1][3])
+            )
+            current_track["middle_line_points"].append(middle_point)
+
 
     # Ustawianie auta na pozycji startu
     car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
@@ -483,7 +537,7 @@ while True:
         
         # Rysowanie linii toru
         for line in current_track["lines"]:
-            pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 3)
+            pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 5)
         
         # Rysowanie zaokrągleń toru
         for i in range(0, len(current_track["lines_round"])-2, 2):
@@ -498,6 +552,23 @@ while True:
         # Rysowanie zamknięcia toru
         draw_semicircle(screen, current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]), (current_track["lines"][1][0], current_track["lines"][1][1]), track_color)
         draw_semicircle(screen, current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]), (current_track["lines"][-2][2], current_track["lines"][-2][3]), track_color)
+
+        # Kolorowanie toru
+        for i in range(0, len(current_track["track_points"])-3, 4):
+            polygon = [
+                current_track["track_points"][i+0],
+                current_track["track_points"][i+2],
+                current_track["track_points"][i+3],
+                current_track["track_points"][i+1],
+            ]
+            pygame.draw.polygon(screen, track_inside_color, polygon)
+        pygame.draw.circle(screen, track_inside_color, current_track["points"][0], calculate_distance(current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1])))
+        pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3])))
+
+        # Rysowanie lini przerywanej
+        for i in range(1, len(current_track["middle_line_points"])-1, 2):
+            draw_dashed_line(screen, (255, 255, 255), current_track["middle_line_points"][i], current_track["middle_line_points"][i+1], 10, 20)
+            draw_dashed_line(screen, (255, 255, 255), current_track["middle_line_points"][i-1], current_track["middle_line_points"][i], 10, 20)
 
         # Rysowanie punktów i linii testowych
         for point in current_track["test_points"]:
@@ -519,7 +590,7 @@ while True:
             generate_track(ilosc_mid_pointow)
             last_generowanie = aktualna_sekunda
 
-        draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 50, 20)
+        draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 60, 20)
 
     # Wyświetlanie ekranu końcowego
     if gra_ukonczona:
