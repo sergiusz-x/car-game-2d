@@ -87,12 +87,10 @@ class Timer:
     def start(self):
         self.start_time = pygame.time.get_ticks()
         self.running = True
-        print("START")
 
     def stop(self):
         self.start_time = 0
         self.running = False
-        print("STOP")
     
     def freeze(self):
         self.freezed = True
@@ -100,7 +98,6 @@ class Timer:
 
     def restart(self):
         self.start_time = pygame.time.get_ticks()
-        print("RESTART")
 
     def get_elapsed_time(self):
         if self.freezed:
