@@ -6,25 +6,28 @@ import math
 import numpy
 
 # Ustawienie seed dla random do testów
-game_seed = 12345
-random.seed(game_seed)
+game_seed = 10
+game_seed_count = 0
 
 # Inicjalizacja Pygame
 pygame.init()
 
 # Ustawienia okna gry
-width, height = 1280, 720
+width, height = 1280, 600
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("2D Car Game")
 
 # Wczytanie obrazu auta
+car_dimensions = (1702/55, 3509/55)
 car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), "car.png"))
+car_image = pygame.transform.scale(car_image, car_dimensions)
+car_image = pygame.transform.rotate(car_image, 90)
 car_rect = car_image.get_rect()
 car_rect.center = (width // 2, height // 2)
 
 # Wczytanie obrazu flagi mety
-flags_dimensions = (60, 60)
-flag_end_img = pygame.image.load(os.path.join(os.path.dirname(__file__), "flag_end.png"))
+flags_dimensions = (2355/58, 3513/58)
+flag_end_img = pygame.image.load(os.path.join(os.path.dirname(__file__), "flag_end_0.png"))
 flag_end_img = pygame.transform.scale(flag_end_img, flags_dimensions)
 flag_end = flag_end_img.get_rect()
 flag_end.center = (width // 2, height // 2)
@@ -48,7 +51,7 @@ map_margin = 75
 # Ustawienia gry
 max_count_tracks = 2 # Ilość torów do przejścia
 count_track = 0
-ilosc_mid_pointow = 1
+ilosc_mid_pointow = 3
 max_ilosc_mid_pointow = 7
 
 # Flaga, czy gra jest uruchomiona
@@ -59,7 +62,7 @@ gra_ukonczona = False
 clock = pygame.time.Clock()
 
 
-# Funkcja tworząca randomowy tor
+# Dane toru
 current_track = {
     "start_point_x": map_margin,
     "start_point_y": 0,
@@ -74,7 +77,8 @@ current_track = {
     "test_lines": [],
     "lines": [],
     "lines_round": [],
-    "track_points": []
+    "track_points": [],
+    "track_check_sum": 0
 }
 # Klasa do obsługi licznika czasu
 class Timer:
@@ -250,6 +254,13 @@ def generate_track(number_of_mid_points=1):
     global width, height, map_margin
     global car_rect, car_angle, car_speed
     global count_track
+    global game_seed, game_seed_count
+
+    # Ustawianie nowego seeda
+    game_seed_count += 1
+    random.seed(game_seed + game_seed_count)
+    print("---")
+    print(f"Nowy seed: {game_seed + game_seed_count} [+{game_seed_count}]")
 
     # Resetowanie ustawień
     current_track["test_points"] = []
@@ -262,6 +273,7 @@ def generate_track(number_of_mid_points=1):
     current_track["points"] = []
     current_track["start_line"] = (0, 0, 0, 0)
     current_track["end_line"] = (0, 0, 0, 0)
+    current_track["track_check_sum"] = 0
     if timer_track.running:
         timer_track.restart()
     else:
@@ -438,10 +450,15 @@ def generate_track(number_of_mid_points=1):
     
     # Ustawienie flag
     flag_end.center = (current_track["end_point_x"], current_track["end_point_y"])
-    #
-
-# Wywołanie funkcji
-generate_track(ilosc_mid_pointow)
+    
+    # Obliczanie sumy kontrolnej toru
+    for (x1, y1, x2, y2) in current_track["lines"]:
+        current_track["track_check_sum"] += int(x1)
+        current_track["track_check_sum"] += int(y1)
+        current_track["track_check_sum"] += int(x2)
+        current_track["track_check_sum"] += int(y2)
+    suma_kontrolna = current_track["track_check_sum"]
+    print(f"Suma kontrolna toru: {suma_kontrolna}")
 
 
 # Główna pętla gry
@@ -462,12 +479,13 @@ while True:
             if event.key == pygame.K_SPACE:
                 timer_track.restart()
                 gra_uruchomiona = True
-            if event.key == pygame.K_r: # Restart gry
-                random.seed(game_seed)
-                generate_track(ilosc_mid_pointow)
-                count_track = 1
+            if event.key == pygame.K_r and gra_ukonczona: # Restart gry
                 gra_uruchomiona = False
                 gra_ukonczona = False
+                game_seed_count = 0
+                print("Ustawianie seeda na 0 #1")
+                # generate_track(ilosc_mid_pointow)
+                count_track = 0
                 timer_main = Timer()
 
                 
@@ -487,13 +505,13 @@ while True:
             # Hamowanie auta
             car_speed = max(0, car_speed - car_acceleration)
 
-        # Uruchomienie timera
+        # Uruchomienie timera i generowanie toru
         if not timer_main.running:
             timer_main.start()
+            generate_track(ilosc_mid_pointow)
 
         # Sprawdzenie czy auto przekroczyło linie toru lub mety
         for line in [current_track["start_line"]] + current_track["lines"]:
-            #
             #
             car_center = (int(car_rect.x+car_rect.width/2), int(car_rect.y+car_rect.height/2))
             car_direction_point = (
@@ -577,9 +595,8 @@ while True:
         pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3])))
 
         # Rysowanie lini przerywanej
-        for i in range(1, len(current_track["middle_line_points"])-1, 2):
-            draw_dashed_line(screen, (255, 255, 255), current_track["middle_line_points"][i], current_track["middle_line_points"][i+1], 10, 20)
-            draw_dashed_line(screen, (255, 255, 255), current_track["middle_line_points"][i-1], current_track["middle_line_points"][i], 10, 20)
+        for i in range(0, len(current_track["middle_line_points"])-1, 1):
+            draw_dashed_line(screen, (250, 245, 240), current_track["middle_line_points"][i], current_track["middle_line_points"][i+1], 10, 20)
 
         # Rysowanie punktów i linii testowych
         for point in current_track["test_points"]:
