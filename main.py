@@ -13,11 +13,6 @@ date = datetime.now()
 game_seed = date.day + date.month + date.year
 game_seed_count = 0
 
-# Plan na testy:
-# 1. Sprawdzenie czy wszystkie paczki są pobrane
-# 2. Sprawdzenie czy są wszystkie pliki (w tym zdjęcia)
-# 3. Sprawdzenie czy nie ma błędów (generowanie map i sprawdzenie czy nie wywaliły błędy)
-
 # Inicjalizacja Pygame
 pygame.init()
 
@@ -25,11 +20,19 @@ pygame.init()
 width, height = 1280, 720
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("2D Car Game")
-pygame.display.set_icon(pygame.image.load(os.path.join(os.path.dirname(__file__), "logo.png")))
+pygame.display.set_icon(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/car/logo.png")))
 
 # Wczytanie obrazu auta
 car_dimensions = (1702/55, 3509/55)
-car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), "car.png"))
+car_names = ["car_0.png", "car_1.png", "car_2.png", "car_3.png", "car_4.png"]
+car_images = []
+car_buttons = []
+car_image_index = 0
+for i in range(len(car_names)):
+    car_images.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/car", car_names[i])))
+    car_images[i] = pygame.transform.scale(car_images[i], car_dimensions)
+    car_buttons.append(ord(f"{i+1}"))
+car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), "images/car/car_0.png"))
 car_image = pygame.transform.scale(car_image, car_dimensions)
 car_image = pygame.transform.rotate(car_image, 90)
 car_rect = car_image.get_rect()
@@ -40,7 +43,7 @@ background_dimensions = (width, height)
 background_images_names = ["background_0.png"]
 background_images_img = []
 for i in range(len(background_images_names)):
-    background_images_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), background_images_names[i])))
+    background_images_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/background", background_images_names[i])))
     background_images_img[i] = pygame.transform.scale(background_images_img[i], background_dimensions)
 background = background_images_img[0].get_rect()
 current_background_index = 0
@@ -50,7 +53,7 @@ flags_dimensions = (2355/55, 3513/55)
 flags_end_names = ["flag_end_0.png", "flag_end_1.png"]
 flags_end_img = []
 for i in range(len(flags_end_names)):
-    flags_end_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), flags_end_names[i])))
+    flags_end_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/flags", flags_end_names[i])))
     flags_end_img[i] = pygame.transform.scale(flags_end_img[i], flags_dimensions)
 flag_end = flags_end_img[0].get_rect()
 current_flag_index = 0
@@ -60,7 +63,7 @@ traffic_lights_dimensions = (25, 25)
 traffic_lights_names = ["traffic_lights_0.png", "traffic_lights_1.png", "traffic_lights_2.png"]
 traffic_lights_img = []
 for i in range(len(traffic_lights_names)):
-    traffic_lights_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), traffic_lights_names[i])))
+    traffic_lights_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/lights", traffic_lights_names[i])))
     traffic_lights_img[i] = pygame.transform.scale(traffic_lights_img[i], traffic_lights_dimensions)
 traffic_lights = traffic_lights_img[0].get_rect()
 current_traffic_lights_index = 0
@@ -70,15 +73,15 @@ street_lights_dimensions = (100, 100)
 street_lights_names = ["light_0.png", "light_1.png"]
 street_lights_img = []
 for i in range(len(street_lights_names)):
-    street_lights_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), street_lights_names[i])))
+    street_lights_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/lights", street_lights_names[i])))
     street_lights_img[i] = pygame.transform.scale(street_lights_img[i], street_lights_dimensions)
 street_lights = street_lights_img[0].get_rect()
 current_street_lights_index = 0
 
 # Ustawienia auta
 car_speed = 0  # Początkowa prędkość
-car_max_speed = 5  # Maksymalna prędkość
-car_acceleration = 0.1  # Współczynnik przyspieszenia
+car_max_speed = 7  # Maksymalna prędkość
+car_acceleration = 0.05  # Współczynnik przyspieszenia
 car_angle = 90
 car_turn_factor = 4
 car_turn_slowdown_factor = 0.07
@@ -92,7 +95,7 @@ map_color = (255, 250, 245)
 map_margin = 75
 
 # Ustawienia gry
-max_count_tracks = 2 # Ilość torów do przejścia
+max_count_tracks = 10 # Ilość torów do przejścia
 count_track = 0
 mid_random_points = 3
 max_ilosc_mid_pointow = 7
@@ -276,7 +279,7 @@ def draw_semicircle(surface, center, point1, point2, color):
     angle1, angle2 = angle2, angle1
 
     # Rysowanie półkola
-    pygame.draw.arc(surface, color, (center[0] - radius, center[1] - radius, 2 * radius+2, 2 * radius+2), angle1/57, angle2/57, 5)
+    pygame.draw.arc(surface, color, (center[0] - radius, center[1] - radius, 2 * radius+2, 2 * radius+2), angle1/57, angle2/57, 7)
 # Funkcja rysująca zaokrąglone linie toru
 def draw_rounded_line(surface, color, start, end, radius):
     dx, dy = end[0] - start[0], end[1] - start[1]
@@ -323,8 +326,14 @@ def draw_dashed_line(surface, color, start_pos, end_pos, width=1, dash_length=10
 # Funkcja tworząca tekst
 default_font_size = 36
 default_text_color = (20, 20, 20)
+fonts = {
+    "36": pygame.font.Font(os.path.join(os.path.dirname(__file__), "ChakraPetch.ttf"), 36)
+}
 def draw_text(screen, text, x, y, font_size=default_font_size, text_color=default_text_color):
-    font = pygame.font.SysFont("monospace", font_size)
+    font = fonts.get(font_size)
+    if not font:
+        font = pygame.font.Font(os.path.join(os.path.dirname(__file__), "ChakraPetch.ttf"), font_size)
+        fonts[font_size] = font
     text_surface = font.render(text, True, text_color)
     text_rect = text_surface.get_rect()
     text_rect.center = (x, y)
@@ -542,196 +551,247 @@ def generate_track(number_of_mid_points=1):
 def test_track_generator(number_of_tests=5):
     global ilosc_mid_pointow, count_track, max_count_tracks
     max_count_tracks = number_of_tests
-    for i in range(number_of_tests):
+    for _ in range(number_of_tests):
         poprzednia_ilosc_pointow = ilosc_mid_pointow
         ilosc_mid_pointow = math.ceil((count_track/max_count_tracks) * max_ilosc_mid_pointow)
         if ilosc_mid_pointow < poprzednia_ilosc_pointow:
             ilosc_mid_pointow = poprzednia_ilosc_pointow
         #
         generate_track(ilosc_mid_pointow) 
+    # Jeśli nie ma błędów, wyjdź z gry
+    pygame.event.post(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE}))
+
 
 
 # Główna pętla gry
-while True:
-    # Wypełnienie ekranu kolorem tła
-    screen.fill(map_color)
+def main(test=False):
+    global screen, timer_track, gra_uruchomiona, gra_ukonczona, game_seed_count, count_track, max_count_tracks
+    global ilosc_mid_pointow, mid_random_points, timer_main
+    global car_angle, car_turn_factor, car_turn_slowdown_factor, car_speed, car_acceleration, car_rect, car_image, car_image_index
+    global current_track, track_color, track_inside_color
+    global width, height
+    global background_images_img, flags_end_img, traffic_lights_img, street_lights_img
+    global current_flag_index, current_traffic_lights_index, current_background_index, current_street_lights_index, last_animation_change_time
+    global street_lights_dimensions
+    global animation_interval, rekord
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+    # Test
+    space_clicked = False
+    runned_test_track_generator = False
 
-        # Obsługa naciśnięcia klawisza
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
+    while True:
+        # Test
+        if test and not space_clicked:
+            space_clicked = True
+            timer_track.restart()
+            gra_uruchomiona = True
+        if test and space_clicked and not runned_test_track_generator:
+            runned_test_track_generator = True
+            test_track_generator(max_count_tracks)
+
+        # Wypełnienie ekranu kolorem tła
+        screen.fill(map_color)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.key == pygame.K_SPACE:
-                timer_track.restart()
-                gra_uruchomiona = True
-            if event.key == pygame.K_r: # Restart gry
-                gra_uruchomiona = False
-                gra_ukonczona = False
-                game_seed_count = 0
-                count_track = 0
-                ilosc_mid_pointow = mid_random_points
-                timer_main = Timer()
 
-    # Ruch auta tylko jeśli gra jest uruchomiona
-    if gra_uruchomiona:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and car_speed > 0:
-            car_angle += car_turn_factor
-            car_speed = car_speed - car_speed * car_turn_slowdown_factor
-        if keys[pygame.K_RIGHT] and car_speed > 0:
-            car_angle -= car_turn_factor
-            car_speed = car_speed - car_speed * car_turn_slowdown_factor
-        if keys[pygame.K_UP]:
-            # Przyspieszenie auta
-            car_speed = min(car_speed + car_acceleration, car_max_speed)
-        else:
-            # Hamowanie auta
-            car_speed = max(0, car_speed - car_acceleration)
-
-        # Uruchomienie timera i generowanie toru
-        if not timer_main.running:
-            timer_main.start()
-            generate_track(ilosc_mid_pointow)
-
-        # Sprawdzenie czy auto przekroczyło linie toru lub mety
-        for line in [current_track["start_line"]] + current_track["lines"]:
-            #
-            car_center = (int(car_rect.x+car_rect.width/2), int(car_rect.y+car_rect.height/2))
-            car_direction_point = (
-                int(car_center[0] + car_rect.width/2*math.cos(math.radians(car_angle))),
-                int(car_center[1] - car_rect.width/2*math.sin(math.radians(car_angle)))
-            )
-            if czy_linie_sie_przecinaja(line, car_center+car_direction_point):
-                car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
-                car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
-                car_speed = 0
-            # META
-            if czy_linie_sie_przecinaja(current_track["end_line"], car_center+car_direction_point):
-                car_speed = 0
-                
-                if count_track < max_count_tracks:
-                    poprzednia_ilosc_pointow = ilosc_mid_pointow
-                    ilosc_mid_pointow = math.ceil((count_track/max_count_tracks) * max_ilosc_mid_pointow)
-                    if ilosc_mid_pointow < poprzednia_ilosc_pointow:
-                        ilosc_mid_pointow = poprzednia_ilosc_pointow
+            # Obsługa naciśnięcia klawisza
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                if event.key == pygame.K_SPACE:
+                    timer_track.restart()
+                    gra_uruchomiona = True
+                if event.key == pygame.K_r: # Restart gry
+                    gra_uruchomiona = False
+                    gra_ukonczona = False
+                    game_seed_count = 0
+                    count_track = 0
+                    ilosc_mid_pointow = mid_random_points
+                    timer_main = Timer()
+                if event.key in car_buttons:
+                    car_image_index = car_buttons.index(event.key)
                     #
-                    generate_track(ilosc_mid_pointow)
+                    car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), f"images/car/car_{car_image_index}.png"))
+                    car_image = pygame.transform.scale(car_image, car_dimensions)
+                    car_image = pygame.transform.rotate(car_image, 90)
+                    car_rect = car_image.get_rect()
+
+        # Ruch auta tylko jeśli gra jest uruchomiona
+        if gra_uruchomiona:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT] and car_speed > 0:
+                car_angle += car_turn_factor
+                car_speed = car_speed - car_speed * car_turn_slowdown_factor
+            if keys[pygame.K_RIGHT] and car_speed > 0:
+                car_angle -= car_turn_factor
+                car_speed = car_speed - car_speed * car_turn_slowdown_factor
+            if keys[pygame.K_UP]:
+                # Przyspieszenie auta
+                car_speed = min(car_speed + car_acceleration, car_max_speed)
+            else:
+                # Hamowanie auta
+                car_speed = max(0, car_speed - car_acceleration)
+
+            # Uruchomienie timera i generowanie toru
+            if not timer_main.running:
+                timer_main.start()
+                generate_track(ilosc_mid_pointow)
+
+            # Sprawdzenie czy auto przekroczyło linie toru lub mety
+            for line in [current_track["start_line"]] + current_track["lines"]:
+                #
+                car_center = (int(car_rect.x+car_rect.width/2), int(car_rect.y+car_rect.height/2))
+                car_direction_point = (
+                    int(car_center[0] + car_rect.width/2*math.cos(math.radians(car_angle))),
+                    int(car_center[1] - car_rect.width/2*math.sin(math.radians(car_angle)))
+                )
+                if czy_linie_sie_przecinaja(line, car_center+car_direction_point):
                     car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
                     car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
-                else:
-                    gra_uruchomiona = False
-                    gra_ukonczona = True
-                    timer_main.freeze()
-            #        
+                    car_speed = 0
+                # META
+                if czy_linie_sie_przecinaja(current_track["end_line"], car_center+car_direction_point):
+                    car_speed = 0
+                    
+                    if count_track < max_count_tracks:
+                        poprzednia_ilosc_pointow = ilosc_mid_pointow
+                        ilosc_mid_pointow = math.ceil((count_track/max_count_tracks) * max_ilosc_mid_pointow)
+                        if ilosc_mid_pointow < poprzednia_ilosc_pointow:
+                            ilosc_mid_pointow = poprzednia_ilosc_pointow
+                        #
+                        generate_track(ilosc_mid_pointow)
+                        car_angle = -math.degrees(math.atan2(current_track["lines"][0][3] - current_track["lines"][0][1], current_track["lines"][0][2] - current_track["lines"][0][0]))
+                        car_rect.center = (current_track["start_point_x"], current_track["start_point_y"])
+                    else:
+                        gra_uruchomiona = False
+                        gra_ukonczona = True
+                        timer_main.freeze()
+                #        
 
-        # Obliczenia nowej pozycji auta
-        car_rect.x += car_speed * pygame.math.Vector2(1, 0).rotate(-car_angle).x
-        car_rect.y += car_speed * pygame.math.Vector2(1, 0).rotate(-car_angle).y
+            # Obliczenia nowej pozycji auta
+            car_rect.x += car_speed * pygame.math.Vector2(1, 0).rotate(-car_angle).x
+            car_rect.y += car_speed * pygame.math.Vector2(1, 0).rotate(-car_angle).y
 
-        # Sprawdzenie, czy auto nie opuściło obszaru gry
-        if car_rect.left < 0:
-            car_rect.left = 0
-        if car_rect.right > width:
-            car_rect.right = width
-        if car_rect.top < 0:
-            car_rect.top = 0
-        if car_rect.bottom > height:
-            car_rect.bottom = height
-        
-        # Rysowanie tła
-        screen.blit(background_images_img[current_background_index], (0, 0))
-
-        # Wyświetlanie timerów
-        draw_text(screen, f"Czas łączny: {convert_timers_to_text(timer_main)}", width/2, 15, 35)
-        draw_text(screen, f"Czas toru: {convert_timers_to_text(timer_track)}", width/2, 40, 25)
-
-
-        # Rysowanie punktów
-        # for point in current_track["points"]:
-            # pygame.draw.circle(screen, track_color, (int(point[0]), int(point[1])), 2)
-        
-        # Rysowanie linii toru
-        for line in current_track["lines"]:
-            pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 5)
-
-        # Rysowanie zamknięcia toru
-        draw_semicircle(screen, current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]), (current_track["lines"][1][0], current_track["lines"][1][1]), track_color)
-        draw_semicircle(screen, current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]), (current_track["lines"][-2][2], current_track["lines"][-2][3]), track_color)
-
-        # Kolorowanie toru
-        for i in range(0, len(current_track["track_points"])-3, 4):
-            polygon = [
-                current_track["track_points"][i+0],
-                current_track["track_points"][i+2],
-                current_track["track_points"][i+3],
-                current_track["track_points"][i+1],
-            ]
-            pygame.draw.polygon(screen, track_inside_color, polygon)
-        pygame.draw.circle(screen, track_inside_color, current_track["points"][0], calculate_distance(current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1])))
-        pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3])))
-
-        # Rysowanie lini przerywanej
-        for i in range(0, len(current_track["middle_line_points"])-1, 1):
-            draw_dashed_line(screen, (250, 245, 240), current_track["middle_line_points"][i], current_track["middle_line_points"][i+1], 10, 20)
-
-        # Rysowanie animowanych rzeczy
-        if time.time() - last_animation_change_time > animation_interval:
-            # Rysowanie flag
-            current_flag_index = (current_flag_index + 1) % len(flags_end_img)
-            # Rysowanie świateł
-            current_traffic_lights_index = (current_traffic_lights_index + 1) % len(traffic_lights_img)
+            # Sprawdzenie, czy auto nie opuściło obszaru gry
+            if car_rect.left < 0:
+                car_rect.left = 0
+            if car_rect.right > width:
+                car_rect.right = width
+            if car_rect.top < 0:
+                car_rect.top = 0
+            if car_rect.bottom > height:
+                car_rect.bottom = height
+            
             # Rysowanie tła
-            current_background_index = (current_background_index + 1) % len(background_images_img)
+            screen.blit(background_images_img[current_background_index], (0, 0))
+
+            # Wyświetlanie timerów
+            draw_text(screen, f"Czas łączny: {convert_timers_to_text(timer_main)}", width/2, 20, 35)
+            draw_text(screen, f"Czas toru: {convert_timers_to_text(timer_track)}", width/2, 55, 25)
+
+            # Rysowanie punktów
+            # for point in current_track["points"]:
+                # pygame.draw.circle(screen, track_color, (int(point[0]), int(point[1])), 2)
+            
+            # Rysowanie linii toru
+            for line in current_track["lines"]:
+                pygame.draw.line(screen, track_color, (line[0], line[1]), (line[2], line[3]), 7)
+
+            # Rysowanie zamknięcia toru
+            draw_semicircle(screen, current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]), (current_track["lines"][1][0], current_track["lines"][1][1]), track_color)
+            draw_semicircle(screen, current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]), (current_track["lines"][-2][2], current_track["lines"][-2][3]), track_color)
+
+            # Kolorowanie toru
+            for i in range(0, len(current_track["track_points"])-3, 4):
+                polygon = [
+                    current_track["track_points"][i+0],
+                    current_track["track_points"][i+2],
+                    current_track["track_points"][i+3],
+                    current_track["track_points"][i+1],
+                ]
+                pygame.draw.polygon(screen, track_inside_color, polygon)
+            pygame.draw.circle(screen, track_inside_color, current_track["points"][0], calculate_distance(current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1])))
+            pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3])))
+
+            # Rysowanie lini przerywanej
+            for i in range(0, len(current_track["middle_line_points"])-1, 1):
+                draw_dashed_line(screen, (250, 245, 240), current_track["middle_line_points"][i], current_track["middle_line_points"][i+1], 10, 20)
+
+            # Rysowanie animowanych rzeczy
+            if time.time() - last_animation_change_time > animation_interval:
+                # Rysowanie flag
+                current_flag_index = (current_flag_index + 1) % len(flags_end_img)
+                # Rysowanie świateł
+                current_traffic_lights_index = (current_traffic_lights_index + 1) % len(traffic_lights_img)
+                # Rysowanie tła
+                current_background_index = (current_background_index + 1) % len(background_images_img)
+                # Rysowanie oświetlenia
+                current_street_lights_index = (current_street_lights_index + 1) % len(street_lights_img)
+                #
+                last_animation_change_time = time.time()
+
+            # Rysowanie flag
+            screen.blit(flags_end_img[current_flag_index], flag_end.topleft)
+            # Rysowanie świateł
+            screen.blit(traffic_lights_img[current_traffic_lights_index], (current_track["lines"][0][0], current_track["lines"][0][1]))
             # Rysowanie oświetlenia
-            current_street_lights_index = (current_street_lights_index + 1) % len(street_lights_img)
-            #
-            last_animation_change_time = time.time()
+            odd_counter = 0
+            for i in range(0, len(current_track["lines"])-2, 2):
+                odd_counter = (odd_counter + 1) % 2
+                x = current_track["lines"][i+odd_counter][2] - street_lights_dimensions[0]/2
+                y = current_track["lines"][i+odd_counter][3] - street_lights_dimensions[1]
+                screen.blit(street_lights_img[current_street_lights_index], (x, y))
 
-        # Rysowanie flag
-        screen.blit(flags_end_img[current_flag_index], flag_end.topleft)
-        # Rysowanie świateł
-        screen.blit(traffic_lights_img[current_traffic_lights_index], (current_track["lines"][0][0], current_track["lines"][0][1]))
-        # Rysowanie oświetlenia
-        odd_counter = 0
-        for i in range(0, len(current_track["lines"])-2, 2):
-            odd_counter = (odd_counter + 1) % 2
-            x = current_track["lines"][i+odd_counter][2] - street_lights_dimensions[0]/2
-            y = current_track["lines"][i+odd_counter][3] - street_lights_dimensions[1]
-            screen.blit(street_lights_img[current_street_lights_index], (x, y))
+            # Rysowanie auta
+            rotated_car = pygame.transform.rotate(car_image, car_angle)
+            rotated_rect = rotated_car.get_rect(center=car_rect.center)
+            screen.blit(rotated_car, rotated_rect.topleft)
 
-        # Rysowanie auta
-        rotated_car = pygame.transform.rotate(car_image, car_angle)
-        rotated_rect = rotated_car.get_rect(center=car_rect.center)
-        screen.blit(rotated_car, rotated_rect.topleft)
+            # Rysowanie punktów i linii testowych
+            for point in current_track["test_points"]:
+                pygame.draw.circle(screen, (255, 0, 0), (int(point[0]), int(point[1])), 5)
+            for line in current_track["test_lines"]:
+                pygame.draw.line(screen, (0, 0, 255), (line[0], line[1]), (line[2], line[3]), 5)
 
-        # Rysowanie punktów i linii testowych
-        for point in current_track["test_points"]:
-            pygame.draw.circle(screen, (255, 0, 0), (int(point[0]), int(point[1])), 5)
-        for line in current_track["test_lines"]:
-            pygame.draw.line(screen, (0, 0, 255), (line[0], line[1]), (line[2], line[3]), 5)
+            # Podpis numeru toru
+            draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 100, 18)
 
-        # Podpis numeru toru
-        draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 100, 18)
+        # Start gry i odliczanie
+        if not gra_uruchomiona and not gra_ukonczona:
+            draw_text(screen, "Kliknij SPACE aby rozpocząć grę!", width/2, height/2-100, 55)
+            # Wybór auta
+            draw_text(screen, "Wybierz swoje auto klikając numer na klawiaturze:", width/2, height/2+50, 30)
+            gap_between_images = 75
+            total_length_car_images = len(car_images) * gap_between_images + len(car_images) * car_dimensions[0]
+            for i in range(len(car_images)):
+                x = (width/2 - total_length_car_images/2+gap_between_images/2) + (car_dimensions[0]+gap_between_images)*i
+                y = height/2+30+car_dimensions[1]
+                #
+                screen.blit(car_images[i], (x, y))
+                text_color = default_text_color
+                if car_image_index == i:
+                    text_color = (232, 9, 24)
+                draw_text(screen, f"{i+1}", x+car_dimensions[0]/2-3, y+car_dimensions[1]+20, 20, text_color)
 
-    # Start gry i odliczanie
-    if not gra_uruchomiona and not gra_ukonczona:
-        draw_text(screen, "Kliknij SPACE aby rozpocząć grę!", width/2, height/2, 55)
 
-    # Wyświetlanie ekranu końcowego
-    if gra_ukonczona:
-        rekord = check_and_update_records(timer_main.get_elapsed_time())
-        rekord = format_time(rekord)
-        draw_text(screen, f"Gratulacje! Ukończyłeś wszystkie tory w {convert_timers_to_text(timer_main)}", width/2, height/2, 40)
-        draw_text(screen, f"Dzisiejszy rekord: {rekord}", width/2, height/2+40, 30)
-        draw_text(screen, f"Kliknij R aby zrestartować grę", width/2, height/2+70, 20)
-    
-    # Aktualizacja ekranu
-    pygame.display.flip()
 
-    # Ustawienie liczby klatek na sekundę
-    clock.tick(60)
+        # Wyświetlanie ekranu końcowego
+        if gra_ukonczona:
+            rekord = check_and_update_records(timer_main.get_elapsed_time())
+            rekord = format_time(rekord)
+            draw_text(screen, f"Gratulacje! Ukończyłeś wszystkie tory w {convert_timers_to_text(timer_main)}", width/2, height/2, 40)
+            draw_text(screen, f"Dzisiejszy rekord: {rekord}", width/2, height/2+40, 30)
+            draw_text(screen, f"Kliknij R aby zrestartować grę", width/2, height/2+70, 20)
+        
+        # Aktualizacja ekranu
+        pygame.display.flip()
+
+        # Ustawienie liczby klatek na sekundę
+        clock.tick(60)
+
+if __name__ == '__main__':
+    main()
