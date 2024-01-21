@@ -59,7 +59,7 @@ flag_end = flags_end_img[0].get_rect()
 current_flag_index = 0
 
 # Wczytanie obrazu świateł
-traffic_lights_dimensions = (25, 25)
+traffic_lights_dimensions = (514/30, 2048/30)
 traffic_lights_names = ["traffic_lights_0.png", "traffic_lights_1.png", "traffic_lights_2.png"]
 traffic_lights_img = []
 for i in range(len(traffic_lights_names)):
@@ -97,7 +97,7 @@ map_margin = 75
 # Ustawienia gry
 max_count_tracks = 10 # Ilość torów do przejścia
 count_track = 0
-mid_random_points = 3
+mid_random_points = 4
 max_ilosc_mid_pointow = 7
 
 # Flaga, czy gra jest uruchomiona
@@ -415,7 +415,7 @@ def generate_track(number_of_mid_points=1):
     #
     for i in range(number_of_mid_points):
         x = random.randint(int(mid_points[-1][0]) + map_margin*2, int(mid_points[-1][0]+gap))
-        y = random.randint(map_margin, height-map_margin-track_width)
+        y = random.randint(map_margin+track_width, height-map_margin)
         mid_points.append((x, y))
     #
     mid_points.append((current_track["end_point_x"], current_track["end_point_y"])) # End
@@ -739,8 +739,8 @@ def main(test=False):
                     current_track["track_points"][i+1],
                 ]
                 pygame.draw.polygon(screen, track_inside_color, polygon)
-            pygame.draw.circle(screen, track_inside_color, current_track["points"][0], calculate_distance(current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1])))
-            pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3])))
+            pygame.draw.circle(screen, track_inside_color, current_track["points"][0], calculate_distance(current_track["points"][0], (current_track["lines"][0][0], current_track["lines"][0][1]))-2)
+            pygame.draw.circle(screen, track_inside_color, current_track["points"][-1], calculate_distance(current_track["points"][-1], (current_track["lines"][-1][2], current_track["lines"][-1][3]))-2)
 
             # Rysowanie lini przerywanej
             for i in range(0, len(current_track["middle_line_points"])-1, 1):
@@ -762,7 +762,7 @@ def main(test=False):
             # Rysowanie flag
             screen.blit(flags_end_img[current_flag_index], flag_end.topleft)
             # Rysowanie świateł
-            screen.blit(traffic_lights_img[current_traffic_lights_index], (current_track["lines"][0][0], current_track["lines"][0][1]))
+            screen.blit(traffic_lights_img[current_traffic_lights_index], (current_track["lines"][1][0]-traffic_lights_dimensions[0]/2, current_track["lines"][1][1]-traffic_lights_dimensions[1]+10))
             # Rysowanie oświetlenia
             odd_counter = 0
             for i in range(0, len(current_track["lines"])-2, 2):
