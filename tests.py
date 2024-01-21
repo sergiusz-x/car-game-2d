@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from main import format_time, calculate_distance, middle_between_points, czy_linie_sie_przecinaja, znajdz_punkt_przeciecia
 
+
 class TestCarGame(unittest.TestCase):
 
     def test_required_packages_installed(self):
@@ -20,8 +21,8 @@ class TestCarGame(unittest.TestCase):
     def test_required_files_exist(self):
         required_files = [
             "main.py", 
-            "images/background/background_0.png", 
-            "images/car/car.png", 
+            "images/background/background_0.png", "images/background/background_1.png", "images/background/background_2.png", "images/background/background_3.png",
+            "images/car/car_0.png", "images/car/car_1.png", "images/car/car_2.png", "images/car/car_3.png", "images/car/car_4.png", 
             "images/flags/flag_end_0.png", "images/flags/flag_end_1.png",
             "images/lights/light_0.png", "images/lights/light_1.png", 
             "images/car/logo.png", 

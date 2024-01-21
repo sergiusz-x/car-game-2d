@@ -40,7 +40,7 @@ car_rect.center = (width // 2, height // 2)
 
 # Wczytanie obrazu tła
 background_dimensions = (width, height)
-background_images_names = ["background_0.png"]
+background_images_names = ["background_0.png", "background_1.png", "background_0.png", "background_2.png", "background_0.png", "background_3.png"]
 background_images_img = []
 for i in range(len(background_images_names)):
     background_images_img.append(pygame.image.load(os.path.join(os.path.dirname(__file__), "images/background", background_images_names[i])))
@@ -80,11 +80,11 @@ current_street_lights_index = 0
 
 # Ustawienia auta
 car_speed = 0  # Początkowa prędkość
-car_max_speed = 7  # Maksymalna prędkość
-car_acceleration = 0.05  # Współczynnik przyspieszenia
+car_max_speed = 0
+car_acceleration = 0  # Współczynnik przyspieszenia
 car_angle = 90
-car_turn_factor = 4
-car_turn_slowdown_factor = 0.07
+car_turn_factor = 0 # Współczynnik kąta skrętu
+car_turn_slowdown_factor = 0 # Wspołczynnik spowolnienia przy skręcaniu
 
 # Ustawienia wyglądu
 track_color = (0, 0, 0)
@@ -323,6 +323,41 @@ def draw_dashed_line(surface, color, start_pos, end_pos, width=1, dash_length=10
         start = (round(x1), round(y1))
         end = (round(x2), round(y2))
         pygame.draw.line(surface, color, start, end, width)
+# Funkcja zmieniająca statystki auta
+max_settings = { # Ustawienia maksymalne aut
+    "car_max_speed": 10,
+    "car_acceleration": 0.15,
+    "car_turn_factor": 5,
+    "car_turn_slowdown_factor": 0.1
+}
+def change_car_stats(index_of_car):
+    global car_max_speed, car_acceleration, car_turn_factor, car_turn_slowdown_factor
+    if index_of_car == 0: #1
+        car_max_speed = 7
+        car_acceleration = 0.05
+        car_turn_factor = 3
+        car_turn_slowdown_factor = 0.07
+    elif index_of_car == 1: #2
+        car_max_speed = 5
+        car_acceleration = 0.1
+        car_turn_factor = 5
+        car_turn_slowdown_factor = 0.06
+    elif index_of_car == 2: #3
+        car_max_speed = 10
+        car_acceleration = 0.13
+        car_turn_factor = 1.5
+        car_turn_slowdown_factor = 0.09
+    elif index_of_car == 3: #4
+        car_max_speed = 9
+        car_acceleration = 0.02
+        car_turn_factor = 3
+        car_turn_slowdown_factor = 0.03
+    elif index_of_car == 4: #5
+        car_max_speed = 4
+        car_acceleration = 0.15 
+        car_turn_factor = 5
+        car_turn_slowdown_factor = 0.01
+change_car_stats(0)
 # Funkcja tworząca tekst
 default_font_size = 36
 default_text_color = (20, 20, 20)
@@ -380,7 +415,7 @@ def generate_track(number_of_mid_points=1):
     #
     for i in range(number_of_mid_points):
         x = random.randint(int(mid_points[-1][0]) + map_margin*2, int(mid_points[-1][0]+gap))
-        y = random.randint(map_margin, height-map_margin)
+        y = random.randint(map_margin, height-map_margin-track_width)
         mid_points.append((x, y))
     #
     mid_points.append((current_track["end_point_x"], current_track["end_point_y"])) # End
@@ -565,15 +600,7 @@ def test_track_generator(number_of_tests=5):
 
 # Główna pętla gry
 def main(test=False):
-    global screen, timer_track, gra_uruchomiona, gra_ukonczona, game_seed_count, count_track, max_count_tracks
-    global ilosc_mid_pointow, mid_random_points, timer_main
-    global car_angle, car_turn_factor, car_turn_slowdown_factor, car_speed, car_acceleration, car_rect, car_image, car_image_index
-    global current_track, track_color, track_inside_color
-    global width, height
-    global background_images_img, flags_end_img, traffic_lights_img, street_lights_img
-    global current_flag_index, current_traffic_lights_index, current_background_index, current_street_lights_index, last_animation_change_time
-    global street_lights_dimensions
-    global animation_interval, rekord
+    global screen, timer_track, gra_uruchomiona, gra_ukonczona, game_seed_count, count_track, max_count_tracks, ilosc_mid_pointow, mid_random_points, timer_main, car_angle, car_turn_factor, car_turn_slowdown_factor, car_speed, car_acceleration, car_rect, car_image, car_image_index, current_track, track_color, track_inside_color, width, height, background_images_img, flags_end_img, traffic_lights_img, street_lights_img, current_flag_index, current_traffic_lights_index, current_background_index, current_street_lights_index, last_animation_change_time, street_lights_dimensions, animation_interval, rekord
 
     # Test
     space_clicked = False
@@ -581,10 +608,6 @@ def main(test=False):
 
     while True:
         # Test
-        if test and not space_clicked:
-            space_clicked = True
-            timer_track.restart()
-            gra_uruchomiona = True
         if test and space_clicked and not runned_test_track_generator:
             runned_test_track_generator = True
             test_track_generator(max_count_tracks)
@@ -614,6 +637,8 @@ def main(test=False):
                     timer_main = Timer()
                 if event.key in car_buttons:
                     car_image_index = car_buttons.index(event.key)
+                    #
+                    change_car_stats(car_image_index)
                     #
                     car_image = pygame.image.load(os.path.join(os.path.dirname(__file__), f"images/car/car_{car_image_index}.png"))
                     car_image = pygame.transform.scale(car_image, car_dimensions)
@@ -760,24 +785,54 @@ def main(test=False):
             # Podpis numeru toru
             draw_text(screen, f"Tor #{count_track}/{max_count_tracks}", width - 100, 18)
 
-        # Start gry i odliczanie
+        # Start gry
         if not gra_uruchomiona and not gra_ukonczona:
-            draw_text(screen, "Kliknij SPACE aby rozpocząć grę!", width/2, height/2-100, 55)
+            draw_text(screen, "Kliknij SPACE aby rozpocząć grę!", width/2, height/2-150, 55)
             # Wybór auta
-            draw_text(screen, "Wybierz swoje auto klikając numer na klawiaturze:", width/2, height/2+50, 30)
+            draw_text(screen, "Wybierz swoje auto klikając numer na klawiaturze:", width/2, height/2-30, 30)
             gap_between_images = 75
             total_length_car_images = len(car_images) * gap_between_images + len(car_images) * car_dimensions[0]
             for i in range(len(car_images)):
                 x = (width/2 - total_length_car_images/2+gap_between_images/2) + (car_dimensions[0]+gap_between_images)*i
-                y = height/2+30+car_dimensions[1]
+                y = height/2-50+car_dimensions[1]
                 #
                 screen.blit(car_images[i], (x, y))
                 text_color = default_text_color
                 if car_image_index == i:
                     text_color = (232, 9, 24)
                 draw_text(screen, f"{i+1}", x+car_dimensions[0]/2-3, y+car_dimensions[1]+20, 20, text_color)
-
-
+            # Statystyki auta
+            gap_between_stats = 50
+            stats_bar_length = 200
+            stats_line_width = 20
+            #
+            for i in range(4):
+                stats_start_pos = (width/2-stats_bar_length/2, height/2+165+(gap_between_stats*i))
+                stats_end_pos = (width/2+stats_bar_length/2, height/2+165+(gap_between_stats*i))
+                #
+                stats_start_stat_pos = (stats_start_pos[0]+5, stats_start_pos[1])
+                stats_end_stat_pos_x = width/2+stats_bar_length/2 - 5
+                #
+                if i == 0: # Prędkość
+                    draw_text(screen, "Prędkość", width/2, height/2+140+(gap_between_stats*i), 20)
+                    pygame.draw.line(screen, (5, 10, 15), stats_start_pos, stats_end_pos, stats_line_width) # Cały pasek
+                    stats_end_stat_pos_x -= stats_bar_length-stats_bar_length*(car_max_speed/max_settings["car_max_speed"])
+                    pygame.draw.line(screen, (250, 245, 240), stats_start_stat_pos, (stats_end_stat_pos_x, stats_end_pos[1]), stats_line_width-10) # Pasek statystyk
+                elif i == 1: # Przyśpieszenie
+                    draw_text(screen, "Przyśpieszenie", width/2, height/2+140+(gap_between_stats*i), 20)
+                    pygame.draw.line(screen, (5, 10, 15), stats_start_pos, stats_end_pos, stats_line_width) # Cały pasek
+                    stats_end_stat_pos_x -= stats_bar_length-stats_bar_length*(car_acceleration/max_settings["car_acceleration"]) 
+                    pygame.draw.line(screen, (250, 245, 240), stats_start_stat_pos, (stats_end_stat_pos_x, stats_end_pos[1]), stats_line_width-10) # Pasek statystyk
+                elif i == 2: # Skręt
+                    draw_text(screen, "Skręt", width/2, height/2+140+(gap_between_stats*i), 20)
+                    pygame.draw.line(screen, (5, 10, 15), stats_start_pos, stats_end_pos, stats_line_width) # Cały pasek
+                    stats_end_stat_pos_x -= stats_bar_length-stats_bar_length*(car_turn_factor/max_settings["car_turn_factor"])  
+                    pygame.draw.line(screen, (250, 245, 240), stats_start_stat_pos, (stats_end_stat_pos_x, stats_end_pos[1]), stats_line_width-10) # Pasek statystyk
+                elif i == 3: # Opony 
+                    draw_text(screen, "Opony", width/2, height/2+140+(gap_between_stats*i), 20)
+                    pygame.draw.line(screen, (5, 10, 15), stats_start_pos, stats_end_pos, stats_line_width) # Cały pasek
+                    stats_end_stat_pos_x -= stats_bar_length-stats_bar_length*(1-car_turn_slowdown_factor/max_settings["car_turn_slowdown_factor"]) # Odwrotnie niż normalnie
+                    pygame.draw.line(screen, (250, 245, 240), stats_start_stat_pos, (stats_end_stat_pos_x, stats_end_pos[1]), stats_line_width-10) # Pasek statystyk
 
         # Wyświetlanie ekranu końcowego
         if gra_ukonczona:
@@ -792,6 +847,12 @@ def main(test=False):
 
         # Ustawienie liczby klatek na sekundę
         clock.tick(60)
+
+        # Test
+        if test and not space_clicked:
+            space_clicked = True
+            timer_track.restart()
+            gra_uruchomiona = True
 
 if __name__ == '__main__':
     main()
