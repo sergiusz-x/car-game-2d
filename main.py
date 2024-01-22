@@ -333,10 +333,10 @@ max_settings = { # Ustawienia maksymalne aut
 def change_car_stats(index_of_car):
     global car_max_speed, car_acceleration, car_turn_factor, car_turn_slowdown_factor
     if index_of_car == 0: #1
-        car_max_speed = 7
-        car_acceleration = 0.05
-        car_turn_factor = 3
-        car_turn_slowdown_factor = 0.07
+        car_max_speed = 9
+        car_acceleration = 0.1
+        car_turn_factor = 4
+        car_turn_slowdown_factor = 0.02
     elif index_of_car == 1: #2
         car_max_speed = 5
         car_acceleration = 0.1
@@ -763,6 +763,12 @@ def main(test=False):
             screen.blit(flags_end_img[current_flag_index], flag_end.topleft)
             # Rysowanie świateł
             screen.blit(traffic_lights_img[current_traffic_lights_index], (current_track["lines"][1][0]-traffic_lights_dimensions[0]/2, current_track["lines"][1][1]-traffic_lights_dimensions[1]+10))
+
+            # Rysowanie auta
+            rotated_car = pygame.transform.rotate(car_image, car_angle)
+            rotated_rect = rotated_car.get_rect(center=car_rect.center)
+            screen.blit(rotated_car, rotated_rect.topleft)
+
             # Rysowanie oświetlenia
             odd_counter = 0
             for i in range(0, len(current_track["lines"])-2, 2):
@@ -770,11 +776,6 @@ def main(test=False):
                 x = current_track["lines"][i+odd_counter][2] - street_lights_dimensions[0]/2
                 y = current_track["lines"][i+odd_counter][3] - street_lights_dimensions[1]
                 screen.blit(street_lights_img[current_street_lights_index], (x, y))
-
-            # Rysowanie auta
-            rotated_car = pygame.transform.rotate(car_image, car_angle)
-            rotated_rect = rotated_car.get_rect(center=car_rect.center)
-            screen.blit(rotated_car, rotated_rect.topleft)
 
             # Rysowanie punktów i linii testowych
             for point in current_track["test_points"]:
