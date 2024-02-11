@@ -4,6 +4,6 @@ In this game, your objective is to swiftly navigate through 10 tracks using vari
 
 ## 💻 Preview
 
-![Start of game](images\readme\start_game.jpg)
-![Mid of game](images\readme\mid_game.jpg)
-![End of game](images\readme\end_game.jpg)
+![Start of game](\images\readme\start_game.jpg)
+![Mid of game](\images\readme\mid_game.jpg)
+![End of game](\images\readme\end_game.jpg)
